@@ -53,8 +53,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Infrastructure\ElementType.cs" />
-    <Compile Include="Infrastructure\Element.cs" />
+    <Compile Include="Infrastructure\MathVectorHelper.cs" />
+    <Compile Include="Interfaces\BaseElement.cs" />
+    <Compile Include="Concrete\Element.cs" />
+    <Compile Include="Interfaces\ElementType.cs" />
+    <Compile Include="Concrete\MountingElement.cs" />
+    <Compile Include="Interfaces\IElement.cs" />
+    <Compile Include="Interfaces\ILoadingElement.cs" />
     <Compile Include="Infrastructure\PathConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SldWorksWorker.cs" />

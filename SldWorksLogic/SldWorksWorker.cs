@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SldWorksLogic.Concrete;
 using SldWorksLogic.Infrastructure;
+using SldWorksLogic.Interfaces;
 using SolidWorks.Interop.sldworks;
 
 namespace SldWorksLogic
@@ -12,11 +14,13 @@ namespace SldWorksLogic
     {
         private readonly SldWorks swApp;
         private readonly AssemblyDoc assDoc;
-        private ModelDoc2 swDoc;
+        private List<Element> loadedElements;
+        private Element element;
+        private readonly ModelDoc2 swDoc;
         private int longstatus = 0;
         private int longwarnings = 0;
 
-        private readonly Element[] paths = PathConfig.GetPaths();
+        private readonly MountingElement[] elements = PathConfig.GetPaths();
         private SelectionMgr mgr;
 
         public SldWorksWorker()
@@ -24,188 +28,137 @@ namespace SldWorksLogic
             swApp = new SldWorks();
             assDoc = swApp.ActiveDoc;
             swDoc = swApp.ActiveDoc;
+
+            loadedElements = GetLoadedElements();
         }
 
         public void AddUnits()
         {
-            foreach (var path in paths)
+            foreach (var element in elements)
             {
-                for (var i = 0; i < path.Count; i++)
-                {
-                    OpenDoc2(path.Path);
-                }
+                OpenDoc(element.Path);
+                AddComponent(element, 0, 0, 0);
             }
-        }
-
-        private void OpenDoc2(params string[] paths)
-        {
-            foreach (var path in paths)
-            {
-                swApp.OpenDocSilent(path, 1, longwarnings);
-                AddComponent(path, 0, 0, 0);
-            }
-        }
-
-        private void AddComponent(string path, double x, double y, double z)
-        {
-            var comp = assDoc.AddComponent4(path, string.Empty, x, y, z);
-            assDoc.EditRebuild();
-            swApp.CloseDoc(path);
         }
 
         public void CreateMates()
         {
             var faces = GetSelectedFaces();
 
-            if (faces.Length < 3)
+            foreach (var entity in faces)
             {
-                throw new ArgumentException("Not enough selected faces");
+                ((Entity)entity).DeSelect();
             }
 
-            SortFaces(faces);
+            var supports = elements.Where(e => e.ElementType == ElementType.Support);
 
-            var entities = CreateEntitiesFromFaces(faces);
+           CreateMates(supports, element.GetSupportFace().First(), 0);
 
-            var comp = (Component2[])assDoc.GetComponents(true);
-            var bodies = new Body2[comp.Length];
-            var bodyFaces = new object[comp.Length][];
+            var detents = elements.Where(e => e.ElementType == ElementType.Detent);
 
-            for (var i = 0; i < comp.Length; i++)
-            {
-                bodies[i] = (Body2)comp[i].GetBody();
-                bodyFaces[i] = bodies[i].GetFaces();
-            }
+            CreateMates(detents.Take(2), element.GetMountingFace().First(), 0);
 
-            for (var i = 0; i < bodyFaces.Length; i++)
-            {
-                for (var j = 0; j < bodyFaces.Length - 1; j++)
-                {
-                    if (bodyFaces[j].Length > bodyFaces[j + 1].Length)
-                    {
-                        var temp = bodyFaces[j];
-                        var tcomp = comp[j];
-
-                        comp[j] = comp[j + 1];
-                        bodyFaces[j] = bodyFaces[j + 1];
-
-                        comp[j + 1] = tcomp;
-                        bodyFaces[j + 1] = temp;
-                    }
-                }
-            }
-            
-            var circle1 = (Face2)bodyFaces[0][2];
-            var circle2 = (Face2)bodyFaces[1][2];
-            var circle3 = (Face2)bodyFaces[2][2];
-
-            var en1 = (Entity)circle1;
-            var en2 = (Entity)circle2;
-            var en3 = (Entity)circle3;
-
-            var sur1 = comp[5].FeatureByName("Плоскость1");
-            var sur2 = comp[5].FeatureByName("Плоскость2");
-            var axis = comp[4].FeatureByName("AxisForMating");
-
-            entities[1].Select(true);
-            sur1.Select(true);
-            assDoc.AddMate3(4, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-            assDoc.EditRebuild();
-            sur1.DeSelect();
-
-            sur2.Select(true);
-            assDoc.AddMate3(4, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-            assDoc.EditRebuild();
-            sur2.DeSelect();
-            entities[1].DeSelect();
-
-            entities[2].Select(true);
-            axis.Select(true);
-            assDoc.AddMate3(1, 0, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-            assDoc.EditRebuild();
-            entities[2].DeSelect();
-            axis.DeSelect();
-
-            entities[0].Select(true);
-            en1.Select(true);
-            assDoc.AddMate3(0, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-            assDoc.EditRebuild();
-            en1.DeSelect();
-
-            en2.Select(true);
-            assDoc.AddMate3(0, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-            assDoc.EditRebuild();
-            en2.DeSelect();
-
-            en3.Select(true);
-            assDoc.AddMate3(0, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-            assDoc.EditRebuild();
-            en3.DeSelect();
+            CreateMates(detents.Skip(2), element.GetGuideFace().First(), 0);
         }
 
-        private Face2[] GetSelectedFaces()
+        private void CreateMates(IEnumerable<MountingElement> mountingElements, Entity elementFace, int type)
         {
-            swDoc = (ModelDoc2)swApp.ActiveDoc;
+            elementFace.Select(true);
+            foreach (var elem in mountingElements)
+            {
+                elem.GetMatingFace().Select(true);
+                assDoc.AddMate3(type, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
+                assDoc.EditRebuild();
+                elem.GetMatingFace().DeSelect();
+            }
+            elementFace.DeSelect();
+        }
+
+        private void OpenDoc(params string[] paths)
+        {
+            foreach (var path in paths)
+            {
+                swApp.OpenDocSilent(path, 1, longwarnings);
+            }
+        }
+
+        private void AddComponent(MountingElement element, double x, double y, double z)
+        {
+            element.Component2 = assDoc.AddComponent4(element.Path, string.Empty, x, y, z);
+            assDoc.EditRebuild();
+            swApp.CloseDoc(element.Path);
+        }
+
+        private List<Element> GetLoadedElements()
+        {
+            object[] objects = assDoc.GetComponents(true);
+            var components = objects.Cast<Component2>();
+
+            if (components == null || !components.Any())
+            {
+                throw new ArgumentException("No components in document");
+            }
+
+            return components.Select(comp => (new Element(comp))).ToList();
+        }
+
+        private List<Face2> GetSelectedFaces()
+        {
             mgr = swDoc.SelectionManager;
 
             var selectedObjectCount = mgr.GetSelectedObjectCount();
 
-            var faces = new Face2[selectedObjectCount];
+            var faces = new List<Face2>(selectedObjectCount);
 
             for (var i = 0; i < selectedObjectCount; i++)
             {
-                faces[i] = mgr.GetSelectedObject6(i + 1, -1);
+                faces.Add(mgr.GetSelectedObject6(i + 1, -1));
+            }
+
+            if (faces.Count == 0)
+            {
+                throw new ArgumentException("Not enough selected faces");
+            }
+
+            if (!CheckFacesAreFromOne(faces))
+            {
+                throw new ArgumentException("Faces are from different components");
             }
 
             return faces;
         }
 
-        private Entity[] CreateEntitiesFromFaces(Face2[] faces)
+        private bool CheckFacesAreFromOne(IEnumerable<Face2> faces)
         {
-            var count = faces.Length;
+            bool flag = false;
+
+            foreach (var loaded in loadedElements)
+            {
+                var except = faces.Except(loaded.GetFaces());
+
+                if (!except.Any())
+                {
+                    flag = true;
+                    element = new Element(loaded.Component2, faces);
+                    break;
+                }
+            }
+
+            return flag;
+        }
+
+        private Entity[] CreateEntitiesFromFaces(IEnumerable<Face2> faces)
+        {
+            var count = faces.Count();
 
             var entities = new Entity[count];
             for (var i = 0; i < count; i++)
             { 
-                entities[i] = (Entity)faces[i];
+                entities[i] = (Entity)faces.ElementAt(i);
                 entities[i].DeSelect();
             }
 
             return entities;
-        }
-
-        private void SortFaces(Face2[] faces)
-        {
-            var count = faces.Length;
-            var faceUVBounds = new double[count][];
-            var size = new double[count][];
-
-            for (var i = 0; i < count; i++)
-            {
-                faceUVBounds[i] = new double[4];
-                faceUVBounds[i] = faces[i].GetUVBounds();
-
-                size[i] = new double[2];
-                size[i][0] = faceUVBounds[i][1] - faceUVBounds[i][0];
-                size[i][1] = faceUVBounds[i][3] - faceUVBounds[i][2];
-            }
-
-            for (var i = 0; i < count; i++)
-            {
-                for (var j = 0; j < count - 1; j++)
-                {
-                    if (size[j][0] > size[j + 1][0])
-                    {
-                        var temp = size[j];
-                        var tem = faces[j];
-
-                        size[j] = size[j + 1];
-                        faces[j] = faces[j + 1];
-
-                        size[j + 1] = temp;
-                        faces[j + 1] = tem;
-                    }
-                }
-            }
         }
     }
 }

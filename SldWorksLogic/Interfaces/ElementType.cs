@@ -1,4 +1,4 @@
-﻿namespace SldWorksLogic.Infrastructure
+﻿namespace SldWorksLogic.Interfaces
 {
     public enum ElementType
     {

@@ -3,17 +3,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SldWorksLogic.Concrete;
+using SldWorksLogic.Interfaces;
 
 namespace SldWorksLogic.Infrastructure
 {
     public static class PathConfig
     {
-        public static Element[] GetPaths()
+        public static MountingElement[] GetPaths()
         {
+            var supports = @"d:\Univer\S05\ATP\CourseProject_SldWorks\SldWorksLogic\Units\supports\Locator7.SLDPRT";
+            var detents = @"d:\Univer\S05\ATP\CourseProject_SldWorks\SldWorksLogic\Units\detents\Locator10.SLDPRT";
+
             return new []
             {
-                new Element(@"d:\Univer\S05\ATP\CourseProject_SldWorks\SldWorksLogic\Units\detents\Locator10.SLDPRT", 3, ElementType.Detent), 
-                new Element(@"d:\Univer\S05\ATP\CourseProject_SldWorks\SldWorksLogic\Units\supports\Locator7.SLDPRT", 3, ElementType.Support) 
+                new MountingElement(supports, ElementType.Support),
+                new MountingElement(supports, ElementType.Support),
+                new MountingElement(supports, ElementType.Support),
+                new MountingElement(detents, ElementType.Detent),
+                new MountingElement(detents, ElementType.Detent),
+                new MountingElement(detents, ElementType.Detent)
             };
         }
     }

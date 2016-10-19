@@ -30,6 +30,7 @@
         {
             this.loadElementsButton = new System.Windows.Forms.Button();
             this.createMates = new System.Windows.Forms.Button();
+            this.restartButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // loadElementsButton
@@ -38,7 +39,7 @@
             this.loadElementsButton.Name = "loadElementsButton";
             this.loadElementsButton.Size = new System.Drawing.Size(75, 23);
             this.loadElementsButton.TabIndex = 0;
-            this.loadElementsButton.Text = "button1";
+            this.loadElementsButton.Text = "Add";
             this.loadElementsButton.UseVisualStyleBackColor = true;
             this.loadElementsButton.Click += new System.EventHandler(this.loadElementsButton_Click);
             // 
@@ -48,15 +49,26 @@
             this.createMates.Name = "createMates";
             this.createMates.Size = new System.Drawing.Size(75, 23);
             this.createMates.TabIndex = 1;
-            this.createMates.Text = "button2";
+            this.createMates.Text = "Mates";
             this.createMates.UseVisualStyleBackColor = true;
             this.createMates.Click += new System.EventHandler(this.createMates_Click);
+            // 
+            // restartButton
+            // 
+            this.restartButton.Location = new System.Drawing.Point(13, 115);
+            this.restartButton.Name = "restartButton";
+            this.restartButton.Size = new System.Drawing.Size(75, 23);
+            this.restartButton.TabIndex = 2;
+            this.restartButton.Text = "Restart";
+            this.restartButton.UseVisualStyleBackColor = true;
+            this.restartButton.Click += new System.EventHandler(this.restartButton_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 262);
+            this.ClientSize = new System.Drawing.Size(211, 180);
+            this.Controls.Add(this.restartButton);
             this.Controls.Add(this.createMates);
             this.Controls.Add(this.loadElementsButton);
             this.Name = "Form1";
@@ -69,6 +81,7 @@
 
         private System.Windows.Forms.Button loadElementsButton;
         private System.Windows.Forms.Button createMates;
+        private System.Windows.Forms.Button restartButton;
     }
 }
 
