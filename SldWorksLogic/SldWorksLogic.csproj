@@ -53,7 +53,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Infrastructure\MathVectorHelper.cs" />
+    <Compile Include="Infrastructure\MathHelper.cs" />
     <Compile Include="Interfaces\BaseElement.cs" />
     <Compile Include="Concrete\Element.cs" />
     <Compile Include="Interfaces\ElementType.cs" />
@@ -62,6 +62,8 @@
     <Compile Include="Interfaces\ILoadingElement.cs" />
     <Compile Include="Infrastructure\PathConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ShellBuilding\Line.cs" />
+    <Compile Include="ShellBuilding\ShellBuilder.cs" />
     <Compile Include="SldWorksWorker.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

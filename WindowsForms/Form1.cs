@@ -25,6 +25,7 @@ namespace WindowsForms
 
         private void InitSldWorker()
         {
+            createMates.Enabled = false;
             try
             {
                 worker = new SldWorksWorker();
@@ -49,12 +50,13 @@ namespace WindowsForms
 
         private void loadElementsButton_Click(object sender, EventArgs e)
         {
-            worker?.AddUnits();
+            worker.AddUnits();
+            createMates.Enabled = true;
         }
 
         private void createMates_Click(object sender, EventArgs e)
         {
-            worker?.CreateMates();
+            worker.CreateMates();
         }
 
         private void restartButton_Click(object sender, EventArgs e)
