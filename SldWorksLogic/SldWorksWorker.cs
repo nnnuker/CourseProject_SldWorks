@@ -7,12 +7,14 @@ using SldWorksLogic.Concrete;
 using SldWorksLogic.Infrastructure;
 using SldWorksLogic.Interfaces;
 using SolidWorks.Interop.sldworks;
+using SolidWorks.Interop.swconst;
 
 namespace SldWorksLogic
 {
     public class SldWorksWorker
     {
         private readonly SldWorks swApp;
+        private static MathUtility mathUtility;
         private readonly AssemblyDoc assDoc;
         private List<Element> loadedElements;
         private Element element;
@@ -23,17 +25,20 @@ namespace SldWorksLogic
         private readonly MountingElement[] elements = PathConfig.GetPaths();
         private SelectionMgr mgr;
 
+        public static MathUtility MathUtility{get { return mathUtility; } }
+
         public SldWorksWorker()
         {
             swApp = new SldWorks();
             assDoc = swApp.ActiveDoc;
             swDoc = swApp.ActiveDoc;
-
-            loadedElements = GetLoadedElements();
+            mathUtility = (MathUtility)swApp.GetMathUtility();
         }
 
         public void AddUnits()
         {
+            loadedElements = GetLoadedElements();
+
             foreach (var element in elements)
             {
                 OpenDoc(element.Path);
@@ -52,26 +57,79 @@ namespace SldWorksLogic
 
             var supports = elements.Where(e => e.ElementType == ElementType.Support);
 
-           CreateMates(supports, element.GetSupportFace().First(), 0);
+            SelectFaces(supports, element.GetSupportFace(), swMateType_e.swMateCOINCIDENT);
 
             var detents = elements.Where(e => e.ElementType == ElementType.Detent);
 
-            CreateMates(detents.Take(2), element.GetMountingFace().First(), 0);
+            SelectFaces(detents.Skip(2), element.GetGuideFace(), swMateType_e.swMateCOINCIDENT);
 
-            CreateMates(detents.Skip(2), element.GetGuideFace().First(), 0);
+            SelectFaces(detents.Take(2), element.GetMountingFace(), swMateType_e.swMateCOINCIDENT);
+
+            CreateMatesHorizont(elements, element.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
+
+            //CreateMatesHorizont(supports, element.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
+
+            //CreateMatesHorizont(detents, element.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
         }
 
-        private void CreateMates(IEnumerable<MountingElement> mountingElements, Entity elementFace, int type)
+        private void SelectFaces(IEnumerable<MountingElement> mountingElements, IEnumerable<Entity> elementFaces, swMateType_e type)
+        {
+            var mount = mountingElements.ToList();
+            var faces = elementFaces.ToList();
+
+            var mountCount = mount.Count();
+            var facesCount = faces.Count();
+
+            var ceiling = Math.Ceiling((double)mountCount / facesCount);
+
+            for (int i = 0; i < facesCount; i++)
+            {
+                var list = new List<MountingElement>();
+                for (int j = 0; j < ceiling; j++)
+                {
+                    if (mountCount > 0)
+                    {
+                        var m = mount.Take(1).First();
+                        mount.Remove(m);
+
+                        mountCount--;
+
+                        list.Add(m);
+                    }                    
+                }
+
+                CreateMates(list, faces[i], type);
+            }    
+        }
+
+        private void CreateMates(IEnumerable<MountingElement> mountingElements, Entity elementFace, swMateType_e type)
         {
             elementFace.Select(true);
             foreach (var elem in mountingElements)
             {
                 elem.GetMatingFace().Select(true);
-                assDoc.AddMate3(type, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
-                assDoc.EditRebuild();
+                CreateMate((int)type, 1);
                 elem.GetMatingFace().DeSelect();
             }
             elementFace.DeSelect();
+        }
+
+        private void CreateMatesHorizont(IEnumerable<MountingElement> mountingElements, Entity elementFace, swMateType_e type, int align)
+        {
+            elementFace.Select(true);
+            foreach (var elem in mountingElements)
+            {
+                elem.GetHorizontFace().Select(true);
+                CreateMate((int)type, align);
+                elem.GetHorizontFace().DeSelect();
+            }
+            elementFace.DeSelect();
+        }
+
+        private void CreateMate(int type, int align)
+        {
+            assDoc.AddMate3(type, align, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
+            assDoc.EditRebuild();
         }
 
         private void OpenDoc(params string[] paths)
