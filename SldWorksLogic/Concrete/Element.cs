@@ -13,8 +13,9 @@ namespace SldWorksLogic.Concrete
         private List<Entity> supportFace;
         private List<Entity> guideFace;
         private List<Entity> mountingFace;
+        private readonly MathUtility mathUtil = SldWorksWorker.MathUtility;
 
-        public IEnumerable<Face2> SelectedFaces { get { return selectedFaces; } set { selectedFaces = value.ToList(); } }
+        public List<Face2> SelectedFaces { get { return selectedFaces; } set { selectedFaces = value; } }
 
         #region Ctors
         public Element()
@@ -32,19 +33,19 @@ namespace SldWorksLogic.Concrete
 
         #endregion
 
-        #region Public faces
+        #region Public methods
 
-        public IEnumerable<Entity> GetSupportFace()
+        public List<Entity> GetSupportFace()
         {
             return supportFace;
         }
 
-        public IEnumerable<Entity> GetGuideFace()
+        public List<Entity> GetGuideFace()
         {
             return guideFace;
         }
 
-        public IEnumerable<Entity> GetMountingFace()
+        public List<Entity> GetMountingFace()
         {
             return mountingFace;
         }
@@ -67,7 +68,7 @@ namespace SldWorksLogic.Concrete
 
             var list = SortByParallel(this.selectedFaces);
 
-            SortFaces(list);
+            //SortFaces(list);
 
             if (list.Count >= 3)
             {
@@ -90,9 +91,10 @@ namespace SldWorksLogic.Concrete
                 temp.Add(face);
                 listFaces.Remove(face);
 
-                var parallel = listFaces.FindAll(f => MathVectorHelper.IsParallel(GetVector(face), GetVector(f)));
+                var parallel = listFaces.FindAll(f => MathHelper.IsParallel(GetVector(face), GetVector(f)));
 
                 temp.AddRange(parallel);
+                parallel.ForEach(p=>listFaces.Remove(p));
                 list.Add(temp);
             }
 
@@ -111,19 +113,20 @@ namespace SldWorksLogic.Concrete
 
         private void SortFaces(List<List<Face2>> groupFaces)
         {
-            double[] array = new double[6];
+            var array = new double[6];
             foreach (var group in groupFaces)
             {
                 foreach (var face in group)
                 {
                     var arr = GetBox(face);
-                    for (int i = 0; i < 3; i++)
-                    {
-                        if (arr[i] < array[i])
-                        {
-                            array[i] = arr[i];
-                        }
-                    }
+                    var global = MathHelper.GetGlobalCoords(arr, Component2.Transform2, mathUtil);
+                    //for (int i = 0; i < 3; i++)
+                    //{
+                    //    if (arr[i] < array[i])
+                    //    {
+                    //        array[i] = arr[i];
+                    //    }
+                    //}
                 }
             }
 

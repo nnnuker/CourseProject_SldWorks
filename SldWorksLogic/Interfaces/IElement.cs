@@ -9,9 +9,9 @@ namespace SldWorksLogic.Interfaces
 {
     public interface IElement
     {
-        IEnumerable<Face2> SelectedFaces { get; set; }
-        IEnumerable<Entity> GetSupportFace();
-        IEnumerable<Entity> GetGuideFace();
-        IEnumerable<Entity> GetMountingFace();
+        List<Face2> SelectedFaces { get; set; }
+        List<Entity> GetSupportFace();
+        List<Entity> GetGuideFace();
+        List<Entity> GetMountingFace();
     }
 }
