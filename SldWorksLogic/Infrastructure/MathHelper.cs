@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SolidWorks.Interop.sldworks;
 
 namespace SldWorksLogic.Infrastructure
 {
-    public static class MathVectorHelper
+    public static class MathHelper
     {
+        #region Vector helper
+
         public static bool IsParallel(double[] first, double[] second)
         {
             bool flag = false;
@@ -62,5 +65,29 @@ namespace SldWorksLogic.Infrastructure
 
             return flag;
         }
+
+        #endregion
+
+        #region Global coordinates
+
+        public static double[] GetGlobalCoords(double[] box, MathTransform swXform, MathUtility mathUtility)
+        {
+            var minArr = Transform(box.Take(3).ToArray(), swXform, mathUtility);
+            var maxArr = Transform(box.Skip(3).Take(3).ToArray(), swXform, mathUtility);
+
+            var res = new List<double>(minArr);
+            res.AddRange(maxArr);
+
+            return res.ToArray();
+        }
+
+        private static double[] Transform(double[] array, MathTransform swXform, MathUtility mathUtility)
+        {
+            var minTransformed = (MathPoint)mathUtility.CreatePoint(array);
+
+            return (double[])((MathPoint)minTransformed.MultiplyTransform(swXform)).ArrayData;
+        }
+
+        #endregion
     }
 }
