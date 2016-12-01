@@ -31,6 +31,7 @@
             this.loadElementsButton = new System.Windows.Forms.Button();
             this.createMates = new System.Windows.Forms.Button();
             this.restartButton = new System.Windows.Forms.Button();
+            this.shellButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // loadElementsButton
@@ -63,11 +64,22 @@
             this.restartButton.UseVisualStyleBackColor = true;
             this.restartButton.Click += new System.EventHandler(this.restartButton_Click);
             // 
+            // shellButton
+            // 
+            this.shellButton.Location = new System.Drawing.Point(95, 13);
+            this.shellButton.Name = "shellButton";
+            this.shellButton.Size = new System.Drawing.Size(75, 23);
+            this.shellButton.TabIndex = 3;
+            this.shellButton.Text = "Shell";
+            this.shellButton.UseVisualStyleBackColor = true;
+            this.shellButton.Click += new System.EventHandler(this.shellButton_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(211, 180);
+            this.Controls.Add(this.shellButton);
             this.Controls.Add(this.restartButton);
             this.Controls.Add(this.createMates);
             this.Controls.Add(this.loadElementsButton);
@@ -82,6 +94,7 @@
         private System.Windows.Forms.Button loadElementsButton;
         private System.Windows.Forms.Button createMates;
         private System.Windows.Forms.Button restartButton;
+        private System.Windows.Forms.Button shellButton;
     }
 }
 

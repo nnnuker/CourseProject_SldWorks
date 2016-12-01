@@ -9,11 +9,11 @@ namespace SldWorksLogic.Concrete
 {
     public sealed class Element : BaseElement, IElement
     {
+        private readonly MathUtility mathUtility;
         private List<Face2> selectedFaces;
         private List<Entity> supportFace;
         private List<Entity> guideFace;
         private List<Entity> mountingFace;
-        private readonly MathUtility mathUtil = SldWorksWorker.MathUtility;
 
         public List<Face2> SelectedFaces { get { return selectedFaces; } set { selectedFaces = value; } }
 
@@ -26,8 +26,9 @@ namespace SldWorksLogic.Concrete
             Initialize(component, new List<Face2>());
         }
 
-        public Element(Component2 component, IEnumerable<Face2> selectedFaces)
+        public Element(Component2 component, MathUtility mathUtility, IEnumerable<Face2> selectedFaces)
         {
+            this.mathUtility = mathUtility;
             Initialize(component, selectedFaces);
         }
 
@@ -119,7 +120,7 @@ namespace SldWorksLogic.Concrete
                 foreach (var face in group)
                 {
                     var arr = GetBox(face);
-                    var global = MathHelper.GetGlobalCoords(arr, Component2.Transform2, mathUtil);
+                    var global = MathHelper.GetGlobalCoords(arr, Component2.Transform2, mathUtility);
                     //for (int i = 0; i < 3; i++)
                     //{
                     //    if (arr[i] < array[i])

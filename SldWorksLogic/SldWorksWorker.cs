@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using SldWorksLogic.Concrete;
 using SldWorksLogic.Infrastructure;
 using SldWorksLogic.Interfaces;
+using SldWorksLogic.ShellBuilding;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swconst;
 
@@ -13,31 +12,41 @@ namespace SldWorksLogic
 {
     public class SldWorksWorker
     {
+        #region Fields
+
         private readonly SldWorks swApp;
-        private static MathUtility mathUtility;
         private readonly AssemblyDoc assDoc;
-        private List<Element> loadedElements;
-        private Element element;
+        private List<Element> allLoadedElements;
+        private Element selectedElement;
         private readonly ModelDoc2 swDoc;
         private int longstatus = 0;
         private int longwarnings = 0;
 
         private readonly MountingElement[] elements = PathConfig.GetPaths();
         private SelectionMgr mgr;
+        private ShellBuilder shellBuilder;
+        private MathUtility mathUtility;
 
-        public static MathUtility MathUtility{get { return mathUtility; } }
+        #endregion
+
+        #region Ctors
 
         public SldWorksWorker()
         {
             swApp = new SldWorks();
             assDoc = swApp.ActiveDoc;
             swDoc = swApp.ActiveDoc;
-            mathUtility = (MathUtility)swApp.GetMathUtility();
+            mathUtility = (MathUtility) swApp.GetMathUtility();
+            shellBuilder = new ShellBuilder(mathUtility);
         }
+
+        #endregion
+
+        #region Public methods
 
         public void AddUnits()
         {
-            loadedElements = GetLoadedElements();
+            allLoadedElements = GetLoadedElements();
 
             foreach (var element in elements)
             {
@@ -57,28 +66,39 @@ namespace SldWorksLogic
 
             var supports = elements.Where(e => e.ElementType == ElementType.Support);
 
-            SelectFaces(supports, element.GetSupportFace(), swMateType_e.swMateCOINCIDENT);
+            SelectFaces(supports, selectedElement.GetSupportFace(), swMateType_e.swMateCOINCIDENT);
 
             var detents = elements.Where(e => e.ElementType == ElementType.Detent);
 
-            SelectFaces(detents.Skip(2), element.GetGuideFace(), swMateType_e.swMateCOINCIDENT);
+            SelectFaces(detents.Skip(2), selectedElement.GetGuideFace(), swMateType_e.swMateCOINCIDENT);
 
-            SelectFaces(detents.Take(2), element.GetMountingFace(), swMateType_e.swMateCOINCIDENT);
+            SelectFaces(detents.Take(2), selectedElement.GetMountingFace(), swMateType_e.swMateCOINCIDENT);
 
-            CreateMatesHorizont(elements, element.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
-
-            //CreateMatesHorizont(supports, element.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
-
-            //CreateMatesHorizont(detents, element.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
+            CreateMatesHorizont(elements, selectedElement.GetSupportFace().First(), swMateType_e.swMatePARALLEL, 0);
         }
+
+        public void CreateShell()
+        {
+            //new[] { elements.First(m => m.ElementType == ElementType.Detent) }
+
+            var lines = shellBuilder.GetShell(elements);
+
+            BuildingSurface(lines, selectedElement.SelectedFaces.First());
+        }
+
+        #endregion
+
+        #region Private methods
+
+        #region Create mates
 
         private void SelectFaces(IEnumerable<MountingElement> mountingElements, IEnumerable<Entity> elementFaces, swMateType_e type)
         {
             var mount = mountingElements.ToList();
             var faces = elementFaces.ToList();
 
-            var mountCount = mount.Count();
-            var facesCount = faces.Count();
+            var mountCount = mount.Count;
+            var facesCount = faces.Count;
 
             var ceiling = Math.Ceiling((double)mountCount / facesCount);
 
@@ -132,6 +152,10 @@ namespace SldWorksLogic
             assDoc.EditRebuild();
         }
 
+        #endregion
+
+        #region Initializing
+
         private void OpenDoc(params string[] paths)
         {
             foreach (var path in paths)
@@ -159,6 +183,10 @@ namespace SldWorksLogic
 
             return components.Select(comp => (new Element(comp))).ToList();
         }
+
+        #endregion
+
+        #region Get selected faces
 
         private List<Face2> GetSelectedFaces()
         {
@@ -190,14 +218,14 @@ namespace SldWorksLogic
         {
             bool flag = false;
 
-            foreach (var loaded in loadedElements)
+            foreach (var loaded in allLoadedElements)
             {
                 var except = faces.Except(loaded.GetFaces());
 
                 if (!except.Any())
                 {
                     flag = true;
-                    element = new Element(loaded.Component2, faces);
+                    selectedElement = new Element(loaded.Component2, mathUtility, faces);
                     break;
                 }
             }
@@ -205,18 +233,75 @@ namespace SldWorksLogic
             return flag;
         }
 
-        private Entity[] CreateEntitiesFromFaces(IEnumerable<Face2> faces)
-        {
-            var count = faces.Count();
+        #endregion
 
-            var entities = new Entity[count];
-            for (var i = 0; i < count; i++)
-            { 
-                entities[i] = (Entity)faces.ElementAt(i);
-                entities[i].DeSelect();
+        #region Shell building
+
+        private void BuildingSurface(IEnumerable<Line> lines, Face2 face)
+        {
+            Component2 newComp;
+            //var mateFace = GetLowestFace(elements);
+            //var f = (Face2[])(object)mateFace.GetFaces();
+
+            assDoc.InsertNewVirtualPart(face, out newComp);
+            newComp.Select(true);
+            assDoc.EditPart2(true, false, longstatus);
+
+            Feature sk = newComp.FeatureByName("Эскиз1");
+
+            sk.Select(true);
+            swDoc.SketchManager.InsertSketch(true);
+
+            foreach (var line in lines)
+            {
+                var l = swDoc.SketchManager.CreateLine(line.First.Coordinates[0], line.First.Coordinates[2], line.First.Coordinates[1], 
+                    line.Second.Coordinates[0], line.Second.Coordinates[2], line.Second.Coordinates[1]);
             }
 
-            return entities;
+            swDoc.FeatureManager.FeatureExtrusion2(true, false, false, 0, 0, 0.01, 0.01, false, false,
+                false, false, 0, 0, false, false, false, false, true, true, true, 0, 0, false);
+            mgr.EnableContourSelection = false;
+            assDoc.AssemblyPartToggle();
+            assDoc.EditAssembly();
+            swDoc.ClearSelection2(true);
+
+            //swDoc.Extension.SelectByID2("На месте1", "MATE", 0, 0, 0, false, 0, null, 0);
+            //swDoc.EditDelete();
+
+            //assDoc.AddMate3(0, 1, false, 0, 0, 0, 0, 0, 0, 0, 0, false, out longstatus);
         }
+
+        #endregion
+
+        private Feature GetLowestFace(IEnumerable<MountingElement> mountingElements)
+        {
+            double[] min = null;
+            int index = 0;
+
+            for (int i = 0; i < mountingElements.Count(); i++)
+            {
+                var elem = mountingElements.ElementAt(i);
+
+                object objBox = new double[6];
+                var flag = elem.GetHorizontFace().GetBox(ref objBox);
+
+                var box = MathHelper.GetGlobalCoords((double[])objBox, elem.Component2.Transform2, mathUtility);
+
+                if (min == null || CheckMin(min, box))
+                {
+                    min = box;
+                    index = i;
+                }
+            }
+
+            return mountingElements.ElementAt(index).GetHorizontFace();
+        }
+
+        private bool CheckMin(double[] min, double[] pretender)
+        {
+            return min[1] < pretender[1];
+        }
+
+        #endregion
     }
 }
