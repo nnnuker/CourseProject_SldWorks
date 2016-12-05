@@ -36,7 +36,7 @@ namespace SldWorksLogic
             swApp = new SldWorks();
             assDoc = swApp.ActiveDoc;
             swDoc = swApp.ActiveDoc;
-            mathUtility = (MathUtility) swApp.GetMathUtility();
+            mathUtility = (MathUtility)swApp.GetMathUtility();
             shellBuilder = new ShellBuilder(mathUtility);
         }
 
@@ -81,7 +81,7 @@ namespace SldWorksLogic
         {
             //new[] { elements.First(m => m.ElementType == ElementType.Detent) }
 
-            var lines = shellBuilder.GetShell(elements);
+            var lines = shellBuilder.GetShell(elements.Where(m => m.ElementType == ElementType.Support));
 
             BuildingSurface(lines, selectedElement.SelectedFaces.First());
         }
@@ -115,11 +115,11 @@ namespace SldWorksLogic
                         mountCount--;
 
                         list.Add(m);
-                    }                    
+                    }
                 }
 
                 CreateMates(list, faces[i], type);
-            }    
+            }
         }
 
         private void CreateMates(IEnumerable<MountingElement> mountingElements, Entity elementFace, swMateType_e type)
@@ -251,11 +251,16 @@ namespace SldWorksLogic
 
             sk.Select(true);
             swDoc.SketchManager.InsertSketch(true);
+            var transform = swDoc.SketchManager.ActiveSketch.ModelToSketchTransform;
+            transform = (MathTransform)(object)transform.Inverse();
 
             foreach (var line in lines)
             {
-                var l = swDoc.SketchManager.CreateLine(line.First.Coordinates[0], line.First.Coordinates[2], line.First.Coordinates[1], 
-                    line.Second.Coordinates[0], line.Second.Coordinates[2], line.Second.Coordinates[1]);
+                line.First.Coordinates = MathHelper.Transform(line.First.Coordinates, transform, mathUtility);
+                line.Second.Coordinates = MathHelper.Transform(line.Second.Coordinates, transform, mathUtility);
+
+                var l = swDoc.SketchManager.CreateLine(-line.First.Coordinates[0], -line.First.Coordinates[2], -line.First.Coordinates[1],
+                    -line.Second.Coordinates[0], -line.Second.Coordinates[2], -line.Second.Coordinates[1]);
             }
 
             swDoc.FeatureManager.FeatureExtrusion2(true, false, false, 0, 0, 0.01, 0.01, false, false,

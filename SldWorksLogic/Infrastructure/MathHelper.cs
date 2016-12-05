@@ -79,7 +79,7 @@ namespace SldWorksLogic.Infrastructure
             return res.ToArray();
         }
 
-        private static double[] Transform(double[] array, MathTransform swXform, MathUtility mathUtility)
+        public static double[] Transform(double[] array, MathTransform swXform, MathUtility mathUtility)
         {
             var minTransformed = (MathPoint)mathUtility.CreatePoint(array);
 
