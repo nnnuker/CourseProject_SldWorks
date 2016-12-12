@@ -63,5 +63,10 @@ namespace WindowsForms
         {
             InitSldWorker();
         }
+
+        private void shellButton_Click(object sender, EventArgs e)
+        {
+            worker.CreateShell();
+        }
     }
 }

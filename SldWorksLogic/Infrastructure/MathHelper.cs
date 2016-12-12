@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using SolidWorks.Interop.sldworks;
 
 namespace SldWorksLogic.Infrastructure
@@ -81,7 +79,7 @@ namespace SldWorksLogic.Infrastructure
             return res.ToArray();
         }
 
-        private static double[] Transform(double[] array, MathTransform swXform, MathUtility mathUtility)
+        public static double[] Transform(double[] array, MathTransform swXform, MathUtility mathUtility)
         {
             var minTransformed = (MathPoint)mathUtility.CreatePoint(array);
 

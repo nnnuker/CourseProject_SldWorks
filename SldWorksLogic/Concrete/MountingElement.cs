@@ -4,7 +4,7 @@ using SolidWorks.Interop.sldworks;
 
 namespace SldWorksLogic.Concrete
 {
-    public class MountingElement: BaseElement, ILoadingElement
+    public class MountingElement : BaseElement, ILoadingElement
     {
         public string Path { get; set; }
         public ElementType ElementType { get; set; }

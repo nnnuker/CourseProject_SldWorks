@@ -9,11 +9,11 @@ namespace SldWorksLogic.Concrete
 {
     public sealed class Element : BaseElement, IElement
     {
+        private readonly MathUtility mathUtility;
         private List<Face2> selectedFaces;
         private List<Entity> supportFace;
         private List<Entity> guideFace;
         private List<Entity> mountingFace;
-        private readonly MathUtility mathUtil = SldWorksWorker.MathUtility;
 
         public List<Face2> SelectedFaces { get { return selectedFaces; } set { selectedFaces = value; } }
 
@@ -26,8 +26,9 @@ namespace SldWorksLogic.Concrete
             Initialize(component, new List<Face2>());
         }
 
-        public Element(Component2 component, IEnumerable<Face2> selectedFaces)
+        public Element(Component2 component, MathUtility mathUtility, IEnumerable<Face2> selectedFaces)
         {
+            this.mathUtility = mathUtility;
             Initialize(component, selectedFaces);
         }
 
@@ -68,13 +69,12 @@ namespace SldWorksLogic.Concrete
 
             var list = SortByParallel(this.selectedFaces);
 
-            //SortFaces(list);
-
             if (list.Count >= 3)
             {
-                supportFace = list[0].Cast<Entity>().ToList();
-                guideFace = list[1].Cast<Entity>().ToList();
-                mountingFace = list[2].Cast<Entity>().ToList();
+                SortFaces(list);
+                //supportFace = list[0].Cast<Entity>().ToList();
+                //guideFace = list[1].Cast<Entity>().ToList();
+                //mountingFace = list[2].Cast<Entity>().ToList();
             }
         }
 
@@ -94,7 +94,7 @@ namespace SldWorksLogic.Concrete
                 var parallel = listFaces.FindAll(f => MathHelper.IsParallel(GetVector(face), GetVector(f)));
 
                 temp.AddRange(parallel);
-                parallel.ForEach(p=>listFaces.Remove(p));
+                parallel.ForEach(p => listFaces.Remove(p));
                 list.Add(temp);
             }
 
@@ -113,57 +113,55 @@ namespace SldWorksLogic.Concrete
 
         private void SortFaces(List<List<Face2>> groupFaces)
         {
-            var array = new double[6];
+            var groupBoxes = new List<Help>();
             foreach (var group in groupFaces)
             {
+                var array = GetBox(group.First());
                 foreach (var face in group)
                 {
                     var arr = GetBox(face);
-                    var global = MathHelper.GetGlobalCoords(arr, Component2.Transform2, mathUtil);
-                    //for (int i = 0; i < 3; i++)
-                    //{
-                    //    if (arr[i] < array[i])
-                    //    {
-                    //        array[i] = arr[i];
-                    //    }
-                    //}
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if (arr[i] < array[i])
+                        {
+                            array[i] = arr[i];
+                        }
+                    }
+
+                    for (int i = 3; i < 6; i++)
+                    {
+                        if (arr[i] > array[i])
+                        {
+                            array[i] = arr[i];
+                        }
+                    }
                 }
+                groupBoxes.Add(new Help { Group = group, GroupArray = array, Max = GetMax(array)});
             }
 
-            //var count = faces.Count();
-            //var faceUVBounds = new double[count][];
-            //var size = new double[count][];
+            groupBoxes = groupBoxes.OrderByDescending(gr => gr.Max).ToList();
 
-            //for (var i = 0; i < count; i++)
-            //{
-            //    faceUVBounds[i] = new double[4];
-            //    faceUVBounds[i] = faces[i].GetUVBounds();
-
-            //    size[i] = new double[2];
-            //    size[i][0] = faceUVBounds[i][1] - faceUVBounds[i][0];
-            //    size[i][1] = faceUVBounds[i][3] - faceUVBounds[i][2];
-            //}
-
-            //for (var i = 0; i < count; i++)
-            //{
-            //    for (var j = 0; j < count - 1; j++)
-            //    {
-            //        if (size[j][0] > size[j + 1][0])
-            //        {
-            //            var temp = size[j];
-            //            var tem = faces[j];
-
-            //            size[j] = size[j + 1];
-            //            faces[j] = faces[j + 1];
-
-            //            size[j + 1] = temp;
-            //            faces[j + 1] = tem;
-            //        }
-            //    }
-            //}
+            supportFace = groupBoxes[0].Group.Cast<Entity>().ToList();
+            guideFace = groupBoxes[1].Group.Cast<Entity>().ToList();
+            mountingFace = groupBoxes[2].Group.Cast<Entity>().ToList();
         }
 
-        
+        private double GetMax(double[] array)
+        {
+            double xy = Math.Abs(array[3] - array[0]) * Math.Abs(array[4] - array[1]);
+            double xz = Math.Abs(array[3] - array[0]) * Math.Abs(array[5] - array[2]);
+            double yz = Math.Abs(array[4] - array[1]) * Math.Abs(array[5] - array[2]);
+
+            return new[] { xy, xz, yz }.Max();
+        }
+
+        private class Help
+        {
+            public List<Face2> Group { get; set; }
+            public double[] GroupArray { get; set; }
+            public double Max { get; set; }
+        }
 
         #endregion
     }
